@@ -1,5 +1,8 @@
 library(plyr)
 library(stringr)
+library(e1071)
+
+setwd("~/Documents/GitHub/sentiment_analysis")
 
 afinn_list <- read.delim(file='AFINN/AFINN-111.txt', header=FALSE, stringsAsFactors=FALSE)
 names(afinn_list) <- c('word', 'score')
@@ -12,6 +15,8 @@ vPosTerms <- afinn_list$word[afinn_list$score==5 | afinn_list$score==4]
 
 posText <- read.delim(file='rt-polaritydata/rt-polarity-pos.txt', header=FALSE, stringsAsFactors=FALSE)
 negText <- read.delim(file='rt-polaritydata/rt-polarity-neg.txt', header=FALSE, stringsAsFactors=FALSE)
+posText <- posText$V1
+negText <- negText$V1
 
 sentimentScore <- function(sentences, vNegTerms, negTerms, posTerms, vPosTerms){
   final_scores <- matrix('', 0, 5)
@@ -36,9 +41,20 @@ sentimentScore <- function(sentences, vNegTerms, negTerms, posTerms, vPosTerms){
     final_scores <- rbind(final_scores, newrow)
     return(final_scores)
   }, vNegTerms, negTerms, posTerms, vPosTerms)
-  colnames(scores) <- c('sentence', 'vNeg', 'neg', 'pos', 'vPos')
   return(scores)
 }
 
 posResult <- as.data.frame(sentimentScore(posText, vNegTerms, negTerms, posTerms, vPosTerms))
 negResult <- as.data.frame(sentimentScore(negText, vNegTerms, negTerms, posTerms, vPosTerms))
+
+posResult <- cbind(posResult, 'positive')
+colnames(posResult) <- c('sentence', 'vNeg', 'neg', 'pos', 'vPos', 'sentiment')
+negResult <- cbind(negResult, 'negative')
+colnames(negResult) <- c('sentence', 'vNeg', 'neg', 'pos', 'vPos', 'sentiment')
+
+results <- rbind(posResult, negResult)
+
+classifier <- naiveBayes(results[,2:5], results[,6])
+
+table(predict(classifier, results[,-6]), results[,6], dnn=list('predicted','actual'))
+
