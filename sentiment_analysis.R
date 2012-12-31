@@ -1,33 +1,44 @@
-library(twitteR)
 library(plyr)
 library(stringr)
 
-posTerms <- scan('positive-words.txt', what='character',comment.char=';')
-negTerms <- scan('negative-words.txt', what='character',comment.char=';')
-posTerms <- c(posTerms, '#great')
-negTerms <- c(negTerms, 'bug', 'wtf')
+afinn_list <- read.delim(file='AFINN/AFINN-111.txt', header=FALSE, stringsAsFactors=FALSE)
+names(afinn_list) <- c('word', 'score')
+afinn_list$word <- tolower(afinn_list$word)
 
-searchTerm <- '@netflix'
+vNegTerms <- afinn_list$word[afinn_list$score==-5 | afinn_list$score==-4]
+negTerms <- afinn_list$word[afinn_list$score==-3 | afinn_list$score==-2 | afinn_list$score==-1]
+posTerms <- afinn_list$word[afinn_list$score==3 | afinn_list$score==2 | afinn_list$score==1]
+vPosTerms <- afinn_list$word[afinn_list$score==5 | afinn_list$score==4]
 
-tweets <- searchTwitter(searchTerm, n=100)
+posText <- read.delim(file='rt-polaritydata/rt-polarity-pos.txt', header=FALSE, stringsAsFactors=FALSE)
+negText <- read.delim(file='rt-polaritydata/rt-polarity-neg.txt', header=FALSE, stringsAsFactors=FALSE)
 
-text <- laply(tweets, function(x) { x$getText() })
-
-sentimentScore <- function(sentences, posTerms, negTerms, .progress='none'){
-  scores <- laply(sentences, function(sentence, posTerms, negTerms){
+sentimentScore <- function(sentences, vNegTerms, negTerms, posTerms, vPosTerms){
+  final_scores <- matrix('', 0, 5)
+  scores <- laply(sentences, function(sentence, vNegTerms, negTerms, posTerms, vPosTerms){
+    initial_sentence <- sentence
     sentence <- gsub('[[:punct:]]', '', sentence)
     sentence <- gsub('[[:cntrl:]]', '', sentence)
     sentence <- gsub('\\d+', '', sentence)
     sentence <- tolower(sentence)
     wordList <- str_split(sentence, '\\s+')
     words <- unlist(wordList)
+    vPosMatches <- match(words, vPosTerms)
     posMatches <- match(words, posTerms)
+    vNegMatches <- match(words, vNegTerms)
     negMatches <- match(words, negTerms)
-    posMatches <- !is.na(posMatches)
-    negMatches <- !is.na(negMatches)
-    score <- sum(posMatches) - sum(negMatches)
-    return(score)
-  }, posTerms, negTerms, .progress=.progress)
-  scores <- data.frame(score=scores, text=sentences)
+    vPosMatches <- sum(!is.na(vPosMatches))
+    posMatches <- sum(!is.na(posMatches))
+    vNegMatches <- sum(!is.na(vNegMatches))
+    negMatches <- sum(!is.na(negMatches))
+    score <- c(vNegMatches, negMatches, posMatches, vPosMatches)
+    newrow <- c(initial_sentence, score)
+    final_scores <- rbind(final_scores, newrow)
+    return(final_scores)
+  }, vNegTerms, negTerms, posTerms, vPosTerms)
+  colnames(scores) <- c('sentence', 'vNeg', 'neg', 'pos', 'vPos')
   return(scores)
 }
+
+posResult <- as.data.frame(sentimentScore(posText, vNegTerms, negTerms, posTerms, vPosTerms))
+negResult <- as.data.frame(sentimentScore(negText, vNegTerms, negTerms, posTerms, vPosTerms))
