@@ -58,7 +58,18 @@ colnames(negResult) <- c('sentence', 'vNeg', 'neg', 'pos', 'vPos', 'sentiment')
 results <- rbind(posResult, negResult)
 classifier <- naiveBayes(results[,2:5], results[,6])
 
-table(predict(classifier, results), results[,6], dnn=list('predicted','actual'))
+confTable <- table(predict(classifier, results), results[,6], dnn=list('predicted','actual'))
 
+confTable
 
-####COMMENT THIS SHIT
+binom.test(confTable[1,1] + confTable[2,2], nrow(results), p=0.5)
+
+####COMMENT
+
+#resources:
+#inspiration and initial code: http://www.inside-r.org/howto/mining-twitter-airline-consumer-sentiment
+#inspiration, recommended AFINN: http://viksalgorithms.blogspot.com.au/2012/06/tracking-us-sentiments-over-time-in.html
+#word list (AFINN): http://www2.imm.dtu.dk/pubdb/views/publication_details.php?id=6010
+#additional movie description words: http://member.tokoha-u.ac.jp/~dixonfdm/Writing%20Topics%20htm/Movie%20Review%20Folder/movie_descrip_vocab.htm
+#idea for bayes for classification rather than just adding and subtracting: http://danzambonini.com/self-improving-bayesian-sentiment-analysis-for-twitter/
+#sentence polarity dataset: http://www.cs.cornell.edu/people/pabo/movie-review-data/
