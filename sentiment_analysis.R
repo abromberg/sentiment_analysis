@@ -69,7 +69,7 @@ results <- rbind(posResult, negResult)
 #run the naive bayes algorithm using all four categories
 classifier <- naiveBayes(results[,2:5], results[,6])
 
-#display the confusion table for the classiciation ran on the same data
+#display the confusion table for the classification ran on the same data
 confTable <- table(predict(classifier, results), results[,6], dnn=list('predicted','actual'))
 confTable
 
